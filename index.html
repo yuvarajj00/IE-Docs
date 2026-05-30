@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Expense Tracker API Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1ea; --bg-card: #fffdf8; --bg-inset: #efeadf;
+    --ink: #1c1a17; --ink-soft: #6b655c; --line: #e0d9cb;
+    --accent: #c0492b; --accent-soft: #f2dcd4;
+    --green: #3f6b52; --green-soft: #dde9e0;
+    --blue: #355b8c; --blue-soft: #dde4ef;
+    --amber: #9a6b1f; --amber-soft: #f0e4cc;
+    --shadow: 0 1px 2px rgba(28,26,23,.04), 0 8px 24px rgba(28,26,23,.06);
+    --radius: 16px;
+  }
+  [data-theme="dark"] {
+    --bg: #15140f; --bg-card: #1f1d17; --bg-inset: #28251d;
+    --ink: #f1ede2; --ink-soft: #9a9384; --line: #322e25;
+    --accent: #e8704f; --accent-soft: #3a2218;
+    --green: #7bb392; --green-soft: #1f2c23;
+    --blue: #7fa3d6; --blue-soft: #1b2535;
+    --amber: #d9aa5a; --amber-soft: #2e2615;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.4);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Spline Sans Mono', monospace; background: var(--bg); color: var(--ink);
+    line-height: 1.5; min-height: 100vh; transition: background .4s ease, color .4s ease;
+    background-image: radial-gradient(circle at 12% 8%, rgba(192,73,43,.05), transparent 40%);
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 28px 20px 90px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 16px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: clamp(1.7rem, 5vw, 2.4rem); letter-spacing: -.02em; line-height: 1; }
+  .brand span { font-size: .68rem; text-transform: uppercase; letter-spacing: .2em; color: var(--ink-soft); }
+  .theme-toggle {
+    background: var(--bg-card); border: 1px solid var(--line); color: var(--ink);
+    width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 1.15rem;
+    display: grid; place-items: center; transition: transform .3s, background .3s, border-color .3s; box-shadow: var(--shadow);
+  }
+  .theme-toggle:hover { transform: rotate(-20deg) scale(1.08); }
+
+  .config {
+    display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 22px; box-shadow: var(--shadow);
+  }
+  .config .field { flex: 1; min-width: 150px; }
+  .session { font-size: .72rem; color: var(--ink-soft); }
+  .session b { color: var(--green); font-family: 'Fraunces', serif; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }
+  .tabs button {
+    font-family: inherit; font-size: .8rem; cursor: pointer; padding: 10px 18px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--bg-card); color: var(--ink-soft);
+    transition: all .2s; text-transform: uppercase; letter-spacing: .08em;
+  }
+  .tabs button.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  [data-theme="dark"] .tabs button.active { background: var(--accent); color: #15140f; border-color: var(--accent); }
+
+  .tab-panel { display: none; animation: fade .35s ease both; }
+  .tab-panel.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .panel {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow);
+  }
+  .panel h2 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.3rem; margin-bottom: 4px; letter-spacing: -.01em; }
+  .panel .hint { font-size: .72rem; color: var(--ink-soft); margin-bottom: 18px; }
+  .panel .hint code { background: var(--bg-inset); padding: 2px 6px; border-radius: 5px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: .64rem; text-transform: uppercase; letter-spacing: .15em; color: var(--ink-soft); }
+  input, select, textarea {
+    font-family: inherit; font-size: .92rem; color: var(--ink); background: var(--bg-inset);
+    border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; width: 100%;
+    transition: border-color .2s, box-shadow .2s; resize: vertical;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  button.act {
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: .92rem; cursor: pointer;
+    padding: 11px 20px; border-radius: 10px; border: none; transition: filter .2s, transform .15s;
+  }
+  button.act:hover { filter: brightness(1.08); }
+  button.act:active { transform: scale(.97); }
+  .b-primary { background: var(--accent); color: #fff; }
+  .b-blue { background: var(--blue); color: #fff; }
+  .b-green { background: var(--green); color: #fff; }
+  .b-ghost { background: var(--bg-inset); color: var(--ink); border: 1px solid var(--line) !important; }
+  .b-danger { background: var(--accent-soft); color: var(--accent); }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat { background: var(--bg-card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); }
+  .stat .l { font-size: .62rem; text-transform: uppercase; letter-spacing: .15em; color: var(--ink-soft); margin-bottom: 8px; }
+  .stat .v { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.5rem; letter-spacing: -.02em; }
+  .stat.income .v { color: var(--green); }
+  .stat.expense .v { color: var(--accent); }
+  .stat.balance { background: var(--ink); color: var(--bg); }
+  [data-theme="dark"] .stat.balance { background: var(--accent); color: #15140f; border-color: var(--accent); }
+  .stat.balance .l { color: rgba(255,255,255,.5); }
+
+  ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .item {
+    display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: 12px;
+    background: var(--bg-inset); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px;
+    animation: fade .3s ease both;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .dot.in { background: var(--green); } .dot.out { background: var(--accent); }
+  .item .desc { font-size: .92rem; } .item .sub { font-size: .66rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; }
+  .item .amt { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.05rem; white-space: nowrap; }
+  .item .amt.in { color: var(--green); } .item .amt.out { color: var(--accent); }
+  .mini { background: none; border: 1px solid var(--line); color: var(--ink-soft); cursor: pointer; font-size: .9rem; padding: 5px 9px; border-radius: 7px; transition: all .2s; }
+  .mini:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+  .bars { display: flex; flex-direction: column; gap: 12px; }
+  .bar-row .top { display: flex; justify-content: space-between; font-size: .8rem; margin-bottom: 5px; }
+  .bar-track { height: 9px; background: var(--bg-inset); border-radius: 999px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width .6s ease; }
+
+  .badge { display: inline-block; font-size: .68rem; padding: 4px 12px; border-radius: 999px; text-transform: uppercase; letter-spacing: .08em; }
+  .badge.ok { background: var(--green-soft); color: var(--green); }
+  .badge.over { background: var(--accent-soft); color: var(--accent); }
+
+  .empty { text-align: center; padding: 36px 20px; color: var(--ink-soft); border: 1px dashed var(--line); border-radius: 12px; font-size: .85rem; }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(120%);
+    background: var(--ink); color: var(--bg); padding: 13px 22px; border-radius: 12px;
+    font-size: .85rem; box-shadow: var(--shadow); transition: transform .35s cubic-bezier(.2,.9,.3,1.3); z-index: 99; max-width: 90vw;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.err { background: var(--accent); }
+
+  .section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .section-head h3 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.15rem; }
+  .filter-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-row .field { flex: 0 0 90px; }
+
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .grid { grid-template-columns: 1fr; }
+    .item { grid-template-columns: auto 1fr auto; grid-row-gap: 6px; }
+    .item .amt { grid-column: 3; }
+    .item .mini { grid-column: span 1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><h1>Ledger</h1><span>API Demo Client</span></div>
+    <button class="theme-toggle" id="themeBtn" aria-label="Toggle theme">☾</button>
+  </header>
+
+  <div class="config">
+    <div class="field">
+      <label>API Base URL</label>
+      <input id="apiBase" value="http://localhost:5000/api">
+    </div>
+    <div class="field" style="flex:0 0 120px;">
+      <label>Active user_id</label>
+      <input id="activeUserId" type="number" placeholder="—">
+    </div>
+    <div class="session" id="sessionInfo">No user loaded. Register or load one in the Users tab.</div>
+  </div>
+
+  <nav class="tabs">
+    <button class="active" data-tab="users">Users</button>
+    <button data-tab="transactions">Transactions</button>
+    <button data-tab="budgets">Budgets</button>
+    <button data-tab="analysis">Analysis</button>
+  </nav>
+
+  <!-- USERS -->
+  <section class="tab-panel active" id="tab-users">
+    <div class="panel">
+      <h2>Register / Load User</h2>
+      <p class="hint"><code>POST /users</code> · <code>GET /users/&lt;username&gt;</code></p>
+      <div class="grid">
+        <div class="field"><label>Username</label><input id="u_username" placeholder="john0"></div>
+        <div class="field"><label>First name</label><input id="u_firstname" placeholder="John"></div>
+        <div class="field full btn-row">
+          <button class="act b-primary" onclick="registerUser()">Register</button>
+          <button class="act b-blue" onclick="loadUser()">Load Profile</button>
+          <button class="act b-ghost" onclick="updateUser()">Update Name</button>
+          <button class="act b-danger" onclick="deleteUser()">Delete</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="profileCard" style="display:none;">
+      <h2 id="p_greet">Profile</h2>
+      <p class="hint">Live from <code>GET /users/&lt;username&gt;</code></p>
+      <div class="stats" style="margin-bottom:0;">
+        <div class="stat balance"><div class="l">Current Balance</div><div class="v" id="p_balance">—</div></div>
+        <div class="stat"><div class="l">User ID</div><div class="v" id="p_id">—</div></div>
+        <div class="stat"><div class="l">Username</div><div class="v" id="p_username" style="font-size:1.1rem;">—</div></div>
+        <div class="stat"><div class="l">Member Since</div><div class="v" id="p_created" style="font-size:1.05rem;">—</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRANSACTIONS -->
+  <section class="tab-panel" id="tab-transactions">
+    <div class="panel">
+      <h2>Add Transaction</h2>
+      <p class="hint"><code>POST /transactions</code></p>
+      <div class="grid">
+        <div class="field"><label>Type</label>
+          <select id="t_type"><option>Expense</option><option>Income</option></select>
+        </div>
+        <div class="field"><label>Category</label>
+          <select id="t_category"><option>Food</option><option>Transport</option><option>Housing</option><option>Shopping</option><option>Health</option><option>Travel</option><option>Salary</option><option>Other</option></select>
+        </div>
+        <div class="field"><label>Title</label><input id="t_title" placeholder="Dominos Pizza"></div>
+        <div class="field"><label>Amount</label><input id="t_amount" type="number" min="0" step="0.01" placeholder="300"></div>
+        <div class="field"><label>Date</label><input id="t_date" type="date"></div>
+        <div class="field"><label>Notes (optional)</label><input id="t_notes" placeholder="Late night order"></div>
+        <div class="field full btn-row"><button class="act b-primary" onclick="addTransaction()">Add Transaction</button></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-head"><h3>History</h3></div>
+      <p class="hint"><code>GET /transactions/&lt;user_id&gt;?month=&amp;year=</code></p>
+      <div class="filter-row">
+        <div class="field"><label>Month</label><input id="t_fmonth" type="number" min="1" max="12" placeholder="all"></div>
+        <div class="field"><label>Year</label><input id="t_fyear" type="number" placeholder="all"></div>
+        <button class="act b-blue" onclick="loadTransactions()">Load</button>
+        <button class="act b-ghost" onclick="loadSummary()">Category Summary</button>
+      </div>
+      <ul id="txList"><div class="empty">Load a user and fetch transactions.</div></ul>
+    </div>
+
+    <div class="panel" id="summaryCard" style="display:none;">
+      <h2>Category Breakdown</h2>
+      <p class="hint"><code>GET /transactions/&lt;user_id&gt;/summary</code></p>
+      <div class="bars" id="summaryBars"></div>
+    </div>
+  </section>
+
+  <!-- BUDGETS -->
+  <section class="tab-panel" id="tab-budgets">
+    <div class="panel">
+      <h2>Set Monthly Budget</h2>
+      <p class="hint"><code>POST /budgets</code> · one per month/year</p>
+      <div class="grid">
+        <div class="field"><label>Month</label><input id="b_month" type="number" min="1" max="12" placeholder="5"></div>
+        <div class="field"><label>Year</label><input id="b_year" type="number" placeholder="2026"></div>
+        <div class="field full"><label>Limit Amount</label><input id="b_limit" type="number" min="0" step="0.01" placeholder="12000"></div>
+        <div class="field full btn-row">
+          <button class="act b-primary" onclick="addBudget()">Set Budget</button>
+          <button class="act b-blue" onclick="loadBudgets()">Load All Budgets</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-head"><h3>Your Budgets</h3></div>
+      <ul id="budgetList"><div class="empty">Load a user and fetch budgets.</div></ul>
+    </div>
+  </section>
+
+  <!-- ANALYSIS -->
+  <section class="tab-panel" id="tab-analysis">
+    <div class="panel">
+      <h2>Monthly Analysis</h2>
+      <p class="hint"><code>GET /analysis/&lt;user_id&gt;?month=&amp;year=</code></p>
+      <div class="filter-row">
+        <div class="field"><label>Month</label><input id="a_month" type="number" min="1" max="12" placeholder="5"></div>
+        <div class="field"><label>Year</label><input id="a_year" type="number" placeholder="2026"></div>
+        <button class="act b-primary" onclick="loadAnalysis()">Analyze</button>
+      </div>
+    </div>
+    <div id="analysisOut" style="display:none;">
+      <div class="stats">
+        <div class="stat income"><div class="l">Total Income</div><div class="v" id="a_income">—</div></div>
+        <div class="stat expense"><div class="l">Total Expenses</div><div class="v" id="a_expenses">—</div></div>
+        <div class="stat balance"><div class="l">Savings</div><div class="v" id="a_savings">—</div></div>
+        <div class="stat"><div class="l">Budget Status</div><div class="v" style="font-size:1rem;"><span id="a_status" class="badge ok">—</span></div></div>
+      </div>
+      <div class="panel">
+        <div class="section-head"><h3 id="a_period">Budget Usage</h3></div>
+        <div class="bar-row">
+          <div class="top"><span id="a_usedlabel">Used —</span><span id="a_limitlabel">Limit —</span></div>
+          <div class="bar-track"><div class="bar-fill" id="a_bar" style="width:0;background:var(--accent);"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  /* theme */
+  const root = document.documentElement, themeBtn = document.getElementById('themeBtn');
+  const setTheme = t => { root.setAttribute('data-theme', t); themeBtn.textContent = t === 'dark' ? '☀' : '☾'; };
+  setTheme(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  themeBtn.onclick = () => setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+
+  /* tabs */
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('tab-' + b.dataset.tab).classList.add('active');
+  });
+
+  /* helpers */
+  const $ = id => document.getElementById(id);
+  const base = () => $('apiBase').value.replace(/\/$/, '');
+  const uid  = () => $('activeUserId').value;
+  const money = n => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  let toastTimer;
+  function toast(msg, isErr) {
+    const t = $('toast'); t.textContent = msg; t.className = 'show' + (isErr ? ' err' : '');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = '', 3000);
+  }
+
+  async function api(path, method = 'GET', body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(base() + path, opts);
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+    if (!res.ok) throw new Error((data && (data.error || data.message)) || ('HTTP ' + res.status));
+    return data;
+  }
+  const fail = e => toast((e.message || 'Request failed') + ' — check API URL / CORS', true);
+
+  function setSession(user) {
+    if (!user) return;
+    if (user.user_id != null) $('activeUserId').value = user.user_id;
+    $('sessionInfo').innerHTML = 'Active: <b>' + (user.username || '') + '</b> (id ' + (user.user_id ?? uid()) + ')';
+  }
+
+  /* USERS */
+  async function registerUser() {
+    const username = $('u_username').value.trim(), first_name = $('u_firstname').value.trim();
+    if (!username || !first_name) return toast('Username and first name required', true);
+    try { const d = await api('/users', 'POST', { username, first_name }); toast('User registered'); setSession(d); renderProfile(d); }
+    catch (e) { fail(e); }
+  }
+  async function loadUser() {
+    const username = $('u_username').value.trim();
+    if (!username) return toast('Enter a username to load', true);
+    try { const d = await api('/users/' + encodeURIComponent(username)); toast('Profile loaded'); setSession(d); renderProfile(d); }
+    catch (e) { fail(e); }
+  }
+  async function updateUser() {
+    const username = $('u_username').value.trim(), first_name = $('u_firstname').value.trim();
+    if (!username || !first_name) return toast('Username and new first name required', true);
+    try { await api('/users/' + encodeURIComponent(username), 'PUT', { first_name }); toast('Name updated'); loadUser(); }
+    catch (e) { fail(e); }
+  }
+  async function deleteUser() {
+    const username = $('u_username').value.trim();
+    if (!username) return toast('Enter a username to delete', true);
+    try { await api('/users/' + encodeURIComponent(username), 'DELETE'); toast('User deleted'); $('profileCard').style.display = 'none'; $('sessionInfo').textContent = 'No user loaded.'; $('activeUserId').value = ''; }
+    catch (e) { fail(e); }
+  }
+  function renderProfile(d) {
+    $('profileCard').style.display = 'block';
+    $('p_greet').textContent = 'Hi, ' + (d.first_name || d.username || 'there');
+    $('p_balance').textContent = money(d.current_balance);
+    $('p_id').textContent = d.user_id ?? '—';
+    $('p_username').textContent = d.username ?? '—';
+    $('p_created').textContent = d.created_at ? String(d.created_at).slice(0, 10) : '—';
+  }
+
+  /* TRANSACTIONS */
+  async function addTransaction() {
+    if (!uid()) return toast('Set an active user_id first', true);
+    const body = {
+      user_id: Number(uid()), type: $('t_type').value, category: $('t_category').value,
+      title: $('t_title').value.trim(), amount: Number($('t_amount').value),
+      date: $('t_date').value, notes: $('t_notes').value.trim()
+    };
+    if (!body.title || !(body.amount > 0) || !body.date) return toast('Title, amount (>0) and date required', true);
+    try { await api('/transactions', 'POST', body); toast(body.type + ' added'); $('t_title').value = ''; $('t_amount').value = ''; $('t_notes').value = ''; loadTransactions(); }
+    catch (e) { fail(e); }
+  }
+  async function loadTransactions() {
+    if (!uid()) return toast('Set an active user_id first', true);
+    let q = []; if ($('t_fmonth').value) q.push('month=' + $('t_fmonth').value); if ($('t_fyear').value) q.push('year=' + $('t_fyear').value);
+    try {
+      const d = await api('/transactions/' + uid() + (q.length ? '?' + q.join('&') : ''));
+      renderTransactions(Array.isArray(d) ? d : (d.transactions || []));
+    } catch (e) { fail(e); }
+  }
+  function renderTransactions(list) {
+    const ul = $('txList');
+    if (!list.length) { ul.innerHTML = '<div class="empty">No transactions found for this period.</div>'; return; }
+    ul.innerHTML = '';
+    list.forEach(t => {
+      const inc = String(t.type).toLowerCase() === 'income';
+      const li = document.createElement('li'); li.className = 'item';
+      li.innerHTML =
+        '<span class="dot ' + (inc ? 'in' : 'out') + '"></span>' +
+        '<div><div class="desc">' + esc(t.title) + '</div><div class="sub">' + esc(t.category) + ' · ' + (t.date || '') + '</div></div>' +
+        '<div class="amt ' + (inc ? 'in' : 'out') + '">' + (inc ? '+' : '−') + ' ' + money(t.amount) + '</div>' +
+        '<button class="mini" title="Edit amount">✎</button>' +
+        '<button class="mini" title="Delete">✕</button>';
+      const [editBtn, delBtn] = li.querySelectorAll('.mini');
+      editBtn.onclick = () => editTransaction(t);
+      delBtn.onclick = () => deleteTransaction(t.transaction_id);
+      ul.appendChild(li);
+    });
+  }
+  async function editTransaction(t) {
+    const v = prompt('New amount for "' + t.title + '"', t.amount);
+    if (v == null) return; const amount = Number(v);
+    if (!(amount > 0)) return toast('Amount must be > 0', true);
+    try { await api('/transactions/' + t.transaction_id + '/edit', 'PUT', { amount }); toast('Transaction updated · balance recalculated'); loadTransactions(); }
+    catch (e) { fail(e); }
+  }
+  async function deleteTransaction(id) {
+    if (!confirm('Delete this transaction?')) return;
+    try { await api('/transactions/' + id + '/delete', 'DELETE'); toast('Deleted · balance recalculated'); loadTransactions(); }
+    catch (e) { fail(e); }
+  }
+  async function loadSummary() {
+    if (!uid()) return toast('Set an active user_id first', true);
+    const m = $('t_fmonth').value, y = $('t_fyear').value;
+    if (!m || !y) return toast('Summary needs both month and year', true);
+    try { const d = await api('/transactions/' + uid() + '/summary?month=' + m + '&year=' + y); renderSummary(d); }
+    catch (e) { fail(e); }
+  }
+  function renderSummary(d) {
+    $('summaryCard').style.display = 'block';
+    const box = $('summaryBars'); box.innerHTML = '';
+    const sec = (title, obj, color) => {
+      const entries = Object.entries(obj || {}); if (!entries.length) return;
+      const max = Math.max(...entries.map(e => e[1]));
+      const h = document.createElement('div'); h.innerHTML = '<div class="sub" style="margin:6px 0 4px;font-weight:600;color:' + color + '">' + title + '</div>';
+      box.appendChild(h);
+      entries.forEach(([k, v]) => {
+        const row = document.createElement('div'); row.className = 'bar-row';
+        row.innerHTML = '<div class="top"><span>' + esc(k) + '</span><span>' + money(v) + '</span></div>' +
+          '<div class="bar-track"><div class="bar-fill" style="width:' + (max ? (v / max * 100) : 0) + '%;background:' + color + '"></div></div>';
+        box.appendChild(row);
+      });
+    };
+    sec('Income', d.income, 'var(--green)');
+    sec('Expense', d.expense, 'var(--accent)');
+    if (!box.children.length) box.innerHTML = '<div class="empty">No data for this period.</div>';
+  }
+
+  /* BUDGETS */
+  async function addBudget() {
+    if (!uid()) return toast('Set an active user_id first', true);
+    const body = { user_id: Number(uid()), month: Number($('b_month').value), year: Number($('b_year').value), limit_amount: Number($('b_limit').value) };
+    if (!(body.month >= 1 && body.month <= 12) || !body.year || !(body.limit_amount > 0)) return toast('Valid month, year and limit required', true);
+    try { await api('/budgets', 'POST', body); toast('Budget set'); loadBudgets(); }
+    catch (e) { fail(e); }
+  }
+  async function loadBudgets() {
+    if (!uid()) return toast('Set an active user_id first', true);
+    try { const d = await api('/budgets/' + uid()); renderBudgets(Array.isArray(d) ? d : (d.budgets || [])); }
+    catch (e) { fail(e); }
+  }
+  function renderBudgets(list) {
+    const ul = $('budgetList');
+    if (!list.length) { ul.innerHTML = '<div class="empty">No budgets set yet.</div>'; return; }
+    ul.innerHTML = '';
+    list.forEach(b => {
+      const li = document.createElement('li'); li.className = 'item';
+      li.innerHTML =
+        '<span class="dot out"></span>' +
+        '<div><div class="desc">' + b.month + '/' + b.year + '</div><div class="sub">Monthly limit</div></div>' +
+        '<div class="amt out">' + money(b.limit_amount) + '</div>' +
+        '<button class="mini" title="Edit">✎</button><button class="mini" title="Delete">✕</button>';
+      const [e1, e2] = li.querySelectorAll('.mini');
+      e1.onclick = () => editBudget(b); e2.onclick = () => deleteBudget(b.budget_id);
+      ul.appendChild(li);
+    });
+  }
+  async function editBudget(b) {
+    const v = prompt('New limit for ' + b.month + '/' + b.year, b.limit_amount);
+    if (v == null) return; const limit_amount = Number(v);
+    if (!(limit_amount > 0)) return toast('Limit must be > 0', true);
+    try { await api('/budgets/' + b.budget_id + '/update', 'PUT', { limit_amount }); toast('Budget updated'); loadBudgets(); }
+    catch (e) { fail(e); }
+  }
+  async function deleteBudget(id) {
+    if (!confirm('Delete this budget?')) return;
+    try { await api('/budgets/' + id + '/delete', 'DELETE'); toast('Budget deleted'); loadBudgets(); }
+    catch (e) { fail(e); }
+  }
+
+  /* ANALYSIS */
+  async function loadAnalysis() {
+    if (!uid()) return toast('Set an active user_id first', true);
+    const m = $('a_month').value, y = $('a_year').value;
+    if (!m || !y) return toast('Month and year required', true);
+    try {
+      const d = await api('/analysis/' + uid() + '?month=' + m + '&year=' + y);
+      $('analysisOut').style.display = 'block';
+      $('a_income').textContent = money(d.total_income);
+      $('a_expenses').textContent = money(d.total_expenses);
+      $('a_savings').textContent = money(d.savings);
+      const ok = d.within_budget;
+      const badge = $('a_status'); badge.textContent = ok ? 'Within Budget' : 'Over Budget'; badge.className = 'badge ' + (ok ? 'ok' : 'over');
+      $('a_period').textContent = 'Budget Usage · ' + d.month + '/' + d.year;
+      const used = Number(d.budget_used || 0), limit = Number(d.budget_limit || 0);
+      const pct = limit > 0 ? Math.min(used / limit * 100, 100) : 0;
+      $('a_usedlabel').textContent = 'Used ' + money(used);
+      $('a_limitlabel').textContent = 'Limit ' + money(limit);
+      $('a_bar').style.width = pct + '%';
+      $('a_bar').style.background = ok ? 'var(--green)' : 'var(--accent)';
+    } catch (e) { fail(e); }
+  }
+
+  function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+  $('t_date').value = new Date().toISOString().slice(0, 10);
+</script>
+</body>
+</html>
